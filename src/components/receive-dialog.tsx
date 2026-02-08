@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy, Check, Share2 } from 'lucide-react';
+import { X, Copy, Check, Share2, Info } from 'lucide-react';
 import QRCode from 'react-qr-code';
+import { TOKENS } from '@/lib/dex-abi';
+import { useWallet } from '@/hooks/use-wallet';
 
 interface ReceiveDialogProps {
   isOpen: boolean;
@@ -13,6 +15,11 @@ interface ReceiveDialogProps {
 
 export function ReceiveDialog({ isOpen, onClose, address }: ReceiveDialogProps) {
   const [copied, setCopied] = useState(false);
+  const { preferredToken, setPreferredToken } = useWallet();
+
+  // Encode preference in QR: tempo:<address>?token=<token_address>
+  const targetTokenAddress = TOKENS[preferredToken].address;
+  const qrValue = `tempo:${address}?token=${targetTokenAddress}`;
 
   const copyAddress = () => {
     navigator.clipboard.writeText(address);
@@ -26,68 +33,88 @@ export function ReceiveDialog({ isOpen, onClose, address }: ReceiveDialogProps) 
         <>
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-[2rem] p-6 z-50 max-w-md mx-auto flex flex-col shadow-2xl"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-x-4 top-[10%] p-6 bg-card border border-border rounded-3xl shadow-2xl z-50 max-w-sm mx-auto overflow-y-auto max-h-[85vh]"
           >
-            <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-8" />
-            
-            <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-secondary rounded-full hover:bg-muted transition-colors">
-                <X className="w-5 h-5 text-muted-foreground" />
-            </button>
-            
-            <div className="flex flex-col items-center gap-6 pb-8">
-                <div className="text-center space-y-2">
-                    <h2 className="text-3xl font-bold tracking-tight text-foreground">Receive Money</h2>
-                    <p className="text-muted-foreground">Scan or copy to receive payments.</p>
-                </div>
-
-                <div className="p-4 bg-white rounded-3xl shadow-sm">
-                    <QRCode
-                        size={200}
-                        style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                        value={address}
-                        viewBox={`0 0 256 256`}
-                    />
-                </div>
-
-                <div className="w-full space-y-4">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center block">Your Wallet Address</label>
-                    <button 
-                        onClick={copyAddress}
-                        className="w-full bg-secondary/30 border border-border rounded-2xl p-4 flex items-center justify-between group hover:bg-secondary/50 transition-all cursor-pointer"
-                    >
-                        <div className="flex flex-col items-start gap-1 overflow-hidden">
-                             <span className="font-mono text-sm text-foreground truncate w-full text-left">
-                                {address}
-                            </span>
-                        </div>
-                        <div className="p-2 bg-background rounded-xl border border-border group-hover:scale-105 transition-transform">
-                            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
-                        </div>
-                    </button>
-                </div>
-
-                <div className="flex gap-4 w-full">
-                     <button className="flex-1 bg-secondary py-3 rounded-xl font-semibold text-foreground hover:bg-secondary/80 transition-all flex items-center justify-center gap-2">
-                        <Share2 className="w-4 h-4" /> Share
-                    </button>
-                    <button 
-                        onClick={copyAddress}
-                        className="flex-1 bg-primary py-3 rounded-xl font-semibold text-primary-foreground shadow-lg shadow-primary/25 hover:brightness-110 transition-all"
-                    >
-                        {copied ? 'Copied!' : 'Copy Address'}
-                    </button>
-                </div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Receive Payment</h2>
+              <button 
+                onClick={onClose}
+                className="p-2 hover:bg-secondary rounded-full transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
+
+            <div className="flex flex-col items-center space-y-6">
+              <div className="p-4 bg-white rounded-2xl shadow-sm">
+                 <QRCode 
+                    value={qrValue}
+                    size={200}
+                    level="H"
+                    style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                    viewBox={`0 0 256 256`}
+                 />
+              </div>
+
+              <div className="w-full space-y-2">
+                  <div className="flex justify-center mb-2">
+                      <div className="flex bg-secondary p-1 rounded-lg">
+                          {(['pathUSD', 'alphaUSD'] as const).map((asset) => (
+                              <button
+                                  key={asset}
+                                  onClick={() => setPreferredToken(asset)}
+                                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                      preferredToken === asset
+                                      ? 'bg-background shadow-sm text-foreground'
+                                      : 'text-muted-foreground hover:text-foreground/80'
+                                  }`}
+                              >
+                                  Get {asset}
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground">
+                      Requesting <b>{preferredToken}</b>
+                  </p>
+              </div>
+
+              <div className="w-full p-4 bg-secondary/50 rounded-xl space-y-2">
+                <p className="text-xs text-muted-foreground text-center font-mono break-all">
+                  {address}
+                </p>
+                <div className="flex gap-2 justify-center">
+                    <button 
+                        onClick={copyAddress}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
+                    >
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copied ? 'Copied' : 'Copy'}
+                    </button>
+                    <button className="p-2 bg-background border border-border rounded-full hover:bg-secondary transition-colors" aria-label="Share">
+                        <Share2 className="w-4 h-4" />
+                    </button>
+                </div>
+              </div>
+              
+              <div className="flex gap-2 items-start bg-blue-500/10 p-3 rounded-xl">
+                  <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                      If sender uses TemPay, it will suggest auto-swapping to {preferredToken}.
+                  </p>
+              </div>
+            </div>
+
           </motion.div>
         </>
       )}

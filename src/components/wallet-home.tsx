@@ -2,22 +2,28 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Download, Scan, History, CreditCard, Copy, Check, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Send, Download, CreditCard, Copy, Check, ArrowDownLeft, ArrowUpRight, ScanLine, ArrowUpDown, Gift } from 'lucide-react';
 import { SendDialog } from './send-dialog';
 import { ReceiveDialog } from './receive-dialog';
+import { SwapDialog } from './swap-dialog';
+import { RewardsDialog } from './rewards-dialog';
+import { SettingsDialog } from './settings-dialog';
 import { useWallet } from '@/hooks/use-wallet';
 import { ThemeToggle } from './theme-toggle';
 import { cn } from '@/lib/utils';
 import { formatUnits } from 'viem';
 
 export function WalletHome({ address }: { address: string }) {
-  const { balance, history } = useWallet();
+  const { balances, history, preferredToken } = useWallet();
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
+  const [isSwapOpen, setIsSwapOpen] = useState(false);
+  const [isRewardsOpen, setIsRewardsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const copyAddress = () => {
-    navigator.clipboard.writeText(address);
+    navigator.clipboard.writeText(address || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -40,12 +46,18 @@ export function WalletHome({ address }: { address: string }) {
   return (
     <div className="flex-1 flex flex-col h-[844px] overflow-hidden bg-background">
        <SendDialog isOpen={isSendOpen} onClose={() => setIsSendOpen(false)} />
-       <ReceiveDialog isOpen={isReceiveOpen} onClose={() => setIsReceiveOpen(false)} address={address} />
+       <ReceiveDialog isOpen={isReceiveOpen} onClose={() => setIsReceiveOpen(false)} address={address || ''} />
+       <SwapDialog isOpen={isSwapOpen} onClose={() => setIsSwapOpen(false)} />
+       <RewardsDialog isOpen={isRewardsOpen} onClose={() => setIsRewardsOpen(false)} />
+       <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
        
        <div className="flex-1 overflow-y-auto pb-6">
             {/* Header */}
             <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-background sticky top-0 z-10">
-                <div className="flex items-center gap-3">
+                <button 
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="flex items-center gap-3 hover:bg-secondary/50 p-2 -ml-2 rounded-2xl transition-colors text-left"
+                >
                     <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center overflow-hidden">
                         <span className="text-lg">👤</span> {/* Placeholder for user avatar */}
                     </div>
@@ -53,7 +65,7 @@ export function WalletHome({ address }: { address: string }) {
                         <h2 className="text-sm text-muted-foreground font-medium">Welcome back,</h2>
                         <h1 className="font-bold text-lg text-foreground leading-tight">User</h1>
                     </div>
-                </div>
+                </button>
                 <ThemeToggle />
             </header>
 
@@ -61,19 +73,28 @@ export function WalletHome({ address }: { address: string }) {
                 variants={container}
                 initial="hidden"
                 animate="show"
-                className="px-6 space-y-8"
+                className="px-6 space-y-6"
             >
                 {/* Credit Card / Balance Section */}
-                <motion.div variants={item} className="relative group perspective-1000">
-                    <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary to-accent p-6 text-primary-foreground shadow-2xl shadow-primary/20 aspect-[1.58/1] flex flex-col justify-between transform transition-transform hover:scale-[1.02] duration-300">
+                <motion.div variants={item} className="relative group perspective-1000 mt-4">
+                    <div className={`relative overflow-hidden rounded-4xl p-6 text-primary-foreground shadow-2xl transition-all duration-500 aspect-[1.58/1] flex flex-col justify-between transform hover:scale-[1.02] ${
+                        preferredToken === 'pathUSD' 
+                            ? 'bg-linear-to-br from-primary to-accent shadow-primary/20' 
+                            : 'bg-linear-to-br from-blue-600 to-indigo-600 shadow-blue-500/20'
+                    }`}>
                         {/* Background Blobs */}
                         <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
                         <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-black/10 rounded-full blur-2xl" />
 
                         <div className="flex justify-between items-start">
                              <div className="flex flex-col">
-                                <span className="text-primary-foreground/80 text-sm font-medium mb-1">Total Balance</span>
-                                <h1 className="text-4xl font-bold tracking-tight">${balance}</h1>
+                                <span className="text-primary-foreground/80 text-sm font-medium mb-1 flex items-center gap-2">
+                                    <ScanLine className="w-4 h-4 opacity-70" />
+                                    {preferredToken === 'pathUSD' ? 'Path Balance' : 'Alpha Balance'}
+                                </span>
+                                <h1 className="text-4xl font-bold tracking-tight">
+                                    ${balances ? balances[preferredToken] : '0.00'}
+                                </h1>
                              </div>
                              <CreditCard className="w-8 h-8 text-primary-foreground/50" />
                         </div>
@@ -86,13 +107,13 @@ export function WalletHome({ address }: { address: string }) {
                                     className="flex items-center gap-2 bg-black/10 hover:bg-black/20 px-3 py-1.5 rounded-full transition-colors backdrop-blur-sm"
                                 >
                                     <span className="font-mono text-sm tracking-wide text-primary-foreground">
-                                        {address.slice(0, 6)}...{address.slice(-4)}
+                                        {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Generating...'}
                                     </span>
                                     {copied ? <Check className="w-3 h-3 text-green-300" /> : <Copy className="w-3 h-3 text-primary-foreground/70" />}
                                 </button>
                             </div>
                             <div className="text-right">
-                                <span className="text-xs font-medium text-primary-foreground/80 block">TemPay Card</span>
+                                <span className="text-xs font-medium text-primary-foreground/80 block">TemPay {preferredToken === 'pathUSD' ? 'Classic' : 'Pro'}</span>
                                 <span className="text-xs text-primary-foreground/50">Exp 12/28</span>
                             </div>
                         </div>
@@ -105,8 +126,8 @@ export function WalletHome({ address }: { address: string }) {
                         {[
                             { label: 'Send', icon: Send, action: () => setIsSendOpen(true) },
                             { label: 'Receive', icon: Download, action: () => setIsReceiveOpen(true) },
-                            { label: 'Scan', icon: Scan, action: () => {} },
-                            { label: 'History', icon: History, action: () => {} },
+                            { label: 'Swap', icon: ArrowUpDown, action: () => setIsSwapOpen(true) },
+                            { label: 'Rewards', icon: Gift, action: () => setIsRewardsOpen(true) },
                         ].map((action) => (
                             <button 
                                 key={action.label}
