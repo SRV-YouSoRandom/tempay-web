@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from '@/components/theme-provider';
+import { WalletProvider } from '@/components/wallet-provider';
 
 // ... imports
 
@@ -28,9 +29,11 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
+          <WalletProvider>
             <main className="flex-1 flex flex-col max-w-md mx-auto w-full border-x border-border shadow-2xl bg-background">
                 {children}
             </main>
+          </WalletProvider>
         </ThemeProvider>
       </body>
     </html>

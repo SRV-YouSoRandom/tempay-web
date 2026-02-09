@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 
 export function Onboarding({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-8 text-center bg-gradient-to-br from-background via-background to-primary/20">
+    <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-8 text-center bg-linear-to-br from-background via-background to-primary/20">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

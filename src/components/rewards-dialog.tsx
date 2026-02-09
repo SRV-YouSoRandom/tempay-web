@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Gift, Loader2, CheckCircle } from 'lucide-react';
 import { useWallet } from '@/hooks/use-wallet';
@@ -11,7 +11,13 @@ interface RewardsDialogProps {
 }
 
 export function RewardsDialog({ isOpen, onClose }: RewardsDialogProps) {
-  const { rewards, claimRewards } = useWallet();
+  const { rewards, claimRewards, refreshRewards } = useWallet();
+  
+  useEffect(() => {
+    if (isOpen) {
+        refreshRewards();
+    }
+  }, [isOpen, refreshRewards]);
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
 

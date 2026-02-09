@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Download, CreditCard, Copy, Check, ArrowDownLeft, ArrowUpRight, ScanLine, ArrowUpDown, Gift } from 'lucide-react';
+import { Send, Download, ArrowUpDown, Gift, History } from 'lucide-react';
 import { SendDialog } from './send-dialog';
 import { ReceiveDialog } from './receive-dialog';
 import { SwapDialog } from './swap-dialog';
@@ -11,22 +11,17 @@ import { SettingsDialog } from './settings-dialog';
 import { useWallet } from '@/hooks/use-wallet';
 import { ThemeToggle } from './theme-toggle';
 import { cn } from '@/lib/utils';
+import { BottomNav } from './bottom-nav';
 import { formatUnits } from 'viem';
 
 export function WalletHome({ address }: { address: string }) {
-  const { balances, history, preferredToken } = useWallet();
+  const { balances, history, preferredToken, refresh } = useWallet();
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [isSwapOpen, setIsSwapOpen] = useState(false);
   const [isRewardsOpen, setIsRewardsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const copyAddress = () => {
-    navigator.clipboard.writeText(address || '');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const [activeTab, setActiveTab] = useState<'home' | 'balance' | 'history'>('home');
 
   const container = {
     hidden: { opacity: 0 },
@@ -44,172 +39,112 @@ export function WalletHome({ address }: { address: string }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[844px] overflow-hidden bg-background">
+    <div className="flex-1 flex flex-col h-[844px] overflow-hidden bg-background relative">
        <SendDialog isOpen={isSendOpen} onClose={() => setIsSendOpen(false)} />
        <ReceiveDialog isOpen={isReceiveOpen} onClose={() => setIsReceiveOpen(false)} address={address || ''} />
        <SwapDialog isOpen={isSwapOpen} onClose={() => setIsSwapOpen(false)} />
        <RewardsDialog isOpen={isRewardsOpen} onClose={() => setIsRewardsOpen(false)} />
        <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
        
-       <div className="flex-1 overflow-y-auto pb-6">
+       <div className="flex-1 overflow-y-auto pb-24 no-scrollbar">
             {/* Header */}
-            <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-background sticky top-0 z-10">
+            <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-background sticky top-0 z-10 text-foreground">
                 <button 
                     onClick={() => setIsSettingsOpen(true)}
                     className="flex items-center gap-3 hover:bg-secondary/50 p-2 -ml-2 rounded-2xl transition-colors text-left"
                 >
                     <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center overflow-hidden">
-                        <span className="text-lg">👤</span> {/* Placeholder for user avatar */}
+                        <span className="text-lg">👤</span>
                     </div>
                     <div>
                         <h2 className="text-sm text-muted-foreground font-medium">Welcome back,</h2>
-                        <h1 className="font-bold text-lg text-foreground leading-tight">User</h1>
+                        <h1 className="font-bold text-lg leading-tight">User</h1>
                     </div>
                 </button>
-                <ThemeToggle />
+                <div className="flex gap-2">
+                    <ThemeToggle />
+                </div>
             </header>
 
             <motion.div 
+                key={activeTab}
                 variants={container}
                 initial="hidden"
                 animate="show"
-                className="px-6 space-y-6"
+                className="px-6 space-y-6 pt-4"
             >
-                {/* Credit Card / Balance Section */}
-                <motion.div variants={item} className="relative group perspective-1000 mt-4">
-                    <div className={`relative overflow-hidden rounded-4xl p-6 text-primary-foreground shadow-2xl transition-all duration-500 aspect-[1.58/1] flex flex-col justify-between transform hover:scale-[1.02] ${
-                        preferredToken === 'pathUSD' 
-                            ? 'bg-linear-to-br from-primary to-accent shadow-primary/20' 
-                            : 'bg-linear-to-br from-blue-600 to-indigo-600 shadow-blue-500/20'
-                    }`}>
-                        {/* Background Blobs */}
-                        <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
-                        <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-black/10 rounded-full blur-2xl" />
-
-                        <div className="flex justify-between items-start">
-                             <div className="flex flex-col">
-                                <span className="text-primary-foreground/80 text-sm font-medium mb-1 flex items-center gap-2">
-                                    <ScanLine className="w-4 h-4 opacity-70" />
-                                    {preferredToken === 'pathUSD' ? 'Path Balance' : 'Alpha Balance'}
-                                </span>
-                                <h1 className="text-4xl font-bold tracking-tight">
-                                    ${balances ? balances[preferredToken] : '0.00'}
-                                </h1>
-                             </div>
-                             <CreditCard className="w-8 h-8 text-primary-foreground/50" />
-                        </div>
-
-                        <div className="flex justify-between items-end">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs text-primary-foreground/60 uppercase tracking-wider font-semibold">Wallet Address</span>
-                                <button 
-                                    onClick={copyAddress}
-                                    className="flex items-center gap-2 bg-black/10 hover:bg-black/20 px-3 py-1.5 rounded-full transition-colors backdrop-blur-sm"
-                                >
-                                    <span className="font-mono text-sm tracking-wide text-primary-foreground">
-                                        {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Generating...'}
-                                    </span>
-                                    {copied ? <Check className="w-3 h-3 text-green-300" /> : <Copy className="w-3 h-3 text-primary-foreground/70" />}
-                                </button>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-xs font-medium text-primary-foreground/80 block">TemPay {preferredToken === 'pathUSD' ? 'Classic' : 'Pro'}</span>
-                                <span className="text-xs text-primary-foreground/50">Exp 12/28</span>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Quick Actions */}
-                <motion.div variants={item}>
-                    <div className="grid grid-cols-4 gap-4">
+                {activeTab === 'home' && (
+                    <motion.div variants={item} className="grid grid-cols-2 gap-4">
                         {[
-                            { label: 'Send', icon: Send, action: () => setIsSendOpen(true) },
-                            { label: 'Receive', icon: Download, action: () => setIsReceiveOpen(true) },
-                            { label: 'Swap', icon: ArrowUpDown, action: () => setIsSwapOpen(true) },
-                            { label: 'Rewards', icon: Gift, action: () => setIsRewardsOpen(true) },
+                            { label: 'Send', icon: Send, action: () => setIsSendOpen(true), color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+                            { label: 'Receive', icon: Download, action: () => setIsReceiveOpen(true), color: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+                            { label: 'Swap', icon: ArrowUpDown, action: () => setIsSwapOpen(true), color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+                            { label: 'Rewards', icon: Gift, action: () => setIsRewardsOpen(true), color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
                         ].map((action) => (
                             <button 
                                 key={action.label}
                                 onClick={action.action}
-                                className="flex flex-col items-center gap-3 group"
+                                className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-all active:scale-95"
                             >
-                                <div className="w-14 h-14 rounded-2xl bg-secondary hover:bg-primary/10 hover:shadow-lg hover:shadow-primary/10 border border-border hover:border-primary/20 transition-all duration-300 flex items-center justify-center group-active:scale-95">
-                                    <action.icon className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", action.color)}>
+                                    <action.icon className="w-6 h-6" />
                                 </div>
-                                <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-                                    {action.label}
-                                </span>
+                                <span className="font-semibold text-lg">{action.label}</span>
                             </button>
                         ))}
-                    </div>
-                </motion.div>
+                    </motion.div>
+                )}
 
-                {/* Recent Transactions */}
-                <motion.div variants={item} className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-bold text-foreground">Recent Activity</h3>
-                        {history.length > 0 && (
-                            <a 
-                                href={`https://scan.moderato.tempo.xyz/address/${address}`}
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="text-sm text-primary font-medium hover:underline"
-                            >
-                                See All
-                            </a>
-                        )}
-                    </div>
-
-                    <div className="space-y-3">
-                        {history.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground bg-secondary/20 rounded-2xl border border-dashed border-border/50">
-                                <span className="text-sm">No recent transactions</span>
+                {activeTab === 'balance' && (
+                    <motion.div variants={item} className="space-y-4">
+                        <h2 className="text-2xl font-bold">Your Assets</h2>
+                        <div className="space-y-3">
+                            <div className="p-4 rounded-3xl bg-card border border-border flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
+                                        P
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold">PathUSD</h3>
+                                        <p className="text-muted-foreground text-sm">Stablecoin</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="block font-bold text-lg">${balances?.pathUSD || '0.00'}</span>
+                                </div>
                             </div>
-                        ) : (
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            history.map((tx: any, i: number) => {
-                                const isReceive = tx.to.toLowerCase() === address.toLowerCase();
-                                return (
-                                    <a 
-                                        key={tx.hash + i}
-                                        href={`https://scan.moderato.tempo.xyz/tx/${tx.hash}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50 hover:bg-secondary/40 hover:border-border transition-all cursor-pointer group"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className={cn(
-                                                "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm", 
-                                                isReceive ? "bg-green-100 dark:bg-green-900/20 text-green-600" : "bg-red-100 dark:bg-red-900/20 text-red-600"
-                                            )}>
-                                                {isReceive ? <ArrowDownLeft className="w-6 h-6" /> : <ArrowUpRight className="w-6 h-6" />}
-                                            </div>
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">
-                                                    {isReceive ? 'Received' : 'Sent'}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground block max-w-[120px] truncate">
-                                                    {new Date(Number(tx.timeStamp) * 1000).toLocaleDateString()}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className={cn("font-bold text-sm block", isReceive ? "text-green-600" : "text-foreground")}>
-                                                {isReceive ? '+' : '-'}${Number(formatUnits(BigInt(tx.value), 6)).toFixed(2)}
-                                            </span>
-                                            <span className="text-[10px] text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded">
-                                                 {isReceive ? tx.from.slice(0,4) : tx.to.slice(0,4)}...
-                                            </span>
-                                        </div>
-                                    </a>
-                                );
-                            })
-                        )}
-                    </div>
-                </motion.div>
+
+                            <div className="p-4 rounded-3xl bg-card border border-border flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
+                                        α
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold">AlphaUSD</h3>
+                                        <p className="text-muted-foreground text-sm">Stablecoin</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="block font-bold text-lg">${balances?.alphaUSD || '0.00'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'history' && (
+                    <motion.div variants={item} className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                        <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center mb-4">
+                            <History className="w-8 h-8 opacity-50" />
+                        </div>
+                        <h3 className="font-bold text-lg">Transaction History</h3>
+                        <p className="text-sm">Coming soon...</p>
+                    </motion.div>
+                )}
             </motion.div>
        </div>
+
+       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );
 }
