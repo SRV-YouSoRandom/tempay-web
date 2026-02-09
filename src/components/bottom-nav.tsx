@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Wallet, History } from 'lucide-react';
+import { Home, Wallet, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Tab = 'home' | 'balance' | 'history';
@@ -49,7 +49,7 @@ export function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
               : "text-muted-foreground hover:bg-muted"
           )}
         >
-          <History className="w-6 h-6" />
+          <Clock className="w-6 h-6" />
           <span className="text-[10px] font-medium">History</span>
         </button>
       </div>

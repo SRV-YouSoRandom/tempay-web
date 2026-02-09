@@ -5,26 +5,24 @@ export const DEX_ABI = [
     "inputs": [
       { "name": "tokenIn", "type": "address" },
       { "name": "tokenOut", "type": "address" },
-      { "name": "amountIn", "type": "uint256" },
-      { "name": "minAmountOut", "type": "uint256" },
-      { "name": "to", "type": "address" },
-      { "name": "deadline", "type": "uint256" }
+      { "name": "amountIn", "type": "uint128" },
+      { "name": "minAmountOut", "type": "uint128" }
     ],
     "outputs": [
-      { "name": "amountOut", "type": "uint256" }
+      { "name": "amountOut", "type": "uint128" }
     ],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "getAmountsOut",
+    "name": "quoteSwapExactAmountIn",
     "inputs": [
         { "name": "tokenIn", "type": "address" },
         { "name": "tokenOut", "type": "address" },
-        { "name": "amountIn", "type": "uint256" }
+        { "name": "amountIn", "type": "uint128" }
     ],
     "outputs": [
-        { "name": "amountOut", "type": "uint256" }
+        { "name": "amountOut", "type": "uint128" }
     ],
     "stateMutability": "view"
   },
@@ -41,7 +39,61 @@ export const DEX_ABI = [
   {
       "type": "error",
       "name": "TransferFailed",
-      "inputs": []
+  },
+  {
+      "type": "error",
+      "name": "InvalidTick",
+      "inputs": [{ "name": "tick", "type": "int24" }]
+  },
+  {
+    "type": "function",
+    "name": "place",
+    "inputs": [
+      { "name": "token", "type": "address" },
+      { "name": "amount", "type": "uint128" },
+      { "name": "isBid", "type": "bool" },
+      { "name": "tick", "type": "int16" }
+    ],
+    "outputs": [
+      { "name": "id", "type": "uint128" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "cancel",
+    "inputs": [
+      { "name": "id", "type": "uint128" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getOrder",
+    "inputs": [
+      { "name": "id", "type": "uint128" }
+    ],
+    "outputs": [
+      { "name": "order", "type": "tuple", "components": [
+        { "name": "id", "type": "uint128" },
+        { "name": "owner", "type": "address" }, // 'maker' in new ABI but 'owner' is fine if position matches? Wait.
+                                              // Abis.ts says: orderId, maker, bookKey, isBid, tick, amount, remaining...
+                                              // The struct changed significantly!
+        // We need to update the struct components to match Abis.ts
+        { "name": "maker", "type": "address" },
+        { "name": "bookKey", "type": "bytes32" },
+        { "name": "isBid", "type": "bool" },
+        { "name": "tick", "type": "int16" },
+        { "name": "amount", "type": "uint128" },
+        { "name": "remaining", "type": "uint128" },
+        { "name": "prev", "type": "uint128" },
+        { "name": "next", "type": "uint128" },
+        { "name": "isFlip", "type": "bool" },
+        { "name": "flipTick", "type": "int16" }
+      ]}
+    ],
+    "stateMutability": "view"
   }
 ] as const;
 

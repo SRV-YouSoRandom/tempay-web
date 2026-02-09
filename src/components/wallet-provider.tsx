@@ -24,6 +24,8 @@ export type WalletState = {
   claimRewards: (tokenSymbol: 'pathUSD' | 'alphaUSD') => Promise<`0x${string}` | null>;
   refresh: () => Promise<void>;
   refreshRewards: () => Promise<void>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  account: any | null; // using any to avoid complex viem type imports for now, or use LocalAccount
 };
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -197,17 +199,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const swap = async (tokenInSymbol: 'pathUSD' | 'alphaUSD', amount: string, to?: string) => {
+  const swap = async (tokenInSymbol: 'pathUSD' | 'alphaUSD', amount: string) => {
       if (!client || !account) return null;
       // Derived symbols
       const tokenIn = TOKENS[tokenInSymbol];
       const tokenOut = tokenInSymbol === 'pathUSD' ? TOKENS.alphaUSD : TOKENS.pathUSD;
-      const recipient = to || account.address;
       
       try {
           // TIP-20 tokens have 6 decimal places according to research
           const amountUnits = parseUnits(amount, 6);
-          const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200); // 20 mins
 
           // 1. Check Allowance
           const allowance = await client.readContract({
@@ -232,13 +232,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
               console.log("Approved.");
           }
 
-          // 2. Pre-check with getAmountsOut (View function)
+          // 2. Pre-check with quoteSwapExactAmountIn (View function)
           // This often gives clearer errors for path/liquidity issues
           try {
               await client.readContract({
                   address: DEX_ADDRESS as `0x${string}`,
                   abi: DEX_ABI,
-                  functionName: 'getAmountsOut',
+                  functionName: 'quoteSwapExactAmountIn',
                   args: [
                       tokenIn.address as `0x${string}`,
                       tokenOut.address as `0x${string}`,
@@ -246,7 +246,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                   ]
               });
           } catch (e) {
-              console.warn("getAmountsOut failed", e);
+              console.warn("quote check failed", e);
               // If this fails, it's likely liquidity or path.
               // We'll throw here to avoid the confusing swap revert.
               throw new Error("Insufficient Liquidity for this pair.");
@@ -263,9 +263,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                     tokenIn.address as `0x${string}`,
                     tokenOut.address as `0x${string}`,
                     amountUnits,
-                    0n, // minAmountOut (MVP: No slippage protection)
-                    recipient as `0x${string}`,
-                    deadline
+                    0n // minAmountOut (MVP: No slippage protection)
                 ],
                 chain: tempoModerato,
                 account: account
@@ -279,7 +277,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (e: any) {
               // Handle known unknown signatures
-              if (JSON.stringify(e).includes('0xaa4bc69a') || e.message?.includes('0xaa4bc69a')) {
+              const errorText = (e as any)?.message || String(e);
+              if (errorText.includes('0xaa4bc69a')) {
                   throw new Error("Swap Failed: Invalid Amount or Insufficient Liquidity (0xaa4bc69a)");
               }
               throw e;
@@ -309,6 +308,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const value = {
     address: mounted ? account?.address || null : null,
+    account, // Expose full account object
     balance,
     balances,
     history,

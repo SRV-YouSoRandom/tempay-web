@@ -2,31 +2,24 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Download, ArrowUpDown, Gift, History, RefreshCw } from 'lucide-react';
+import { Send, Download, ArrowUpDown, Gift, History, Droplets } from 'lucide-react';
 import { SendDialog } from './send-dialog';
 import { ReceiveDialog } from './receive-dialog';
 import { SwapDialog } from './swap-dialog';
 import { RewardsDialog } from './rewards-dialog';
 import { SettingsDialog } from './settings-dialog';
-import { useWallet } from '@/hooks/use-wallet';
-import { cn } from '@/lib/utils';
+import { LiquidityDialog } from './liquidity-dialog';
 import { BottomNav } from './bottom-nav';
 
 export function WalletHome({ address }: { address: string }) {
-  const { balances, refresh } = useWallet();
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [isSwapOpen, setIsSwapOpen] = useState(false);
   const [isRewardsOpen, setIsRewardsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLiquidityOpen, setIsLiquidityOpen] = useState(false);
+  
   const [activeTab, setActiveTab] = useState<'home' | 'balance' | 'history'>('home');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-      setIsRefreshing(true);
-      await refresh();
-      setTimeout(() => setIsRefreshing(false), 500);
-  };
 
   const container = {
     hidden: { opacity: 0 },
@@ -50,6 +43,7 @@ export function WalletHome({ address }: { address: string }) {
        <SwapDialog isOpen={isSwapOpen} onClose={() => setIsSwapOpen(false)} />
        <RewardsDialog isOpen={isRewardsOpen} onClose={() => setIsRewardsOpen(false)} />
        <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+       <LiquidityDialog isOpen={isLiquidityOpen} onClose={() => setIsLiquidityOpen(false)} />
        
        <div className="flex-1 overflow-y-auto pb-24 no-scrollbar">
             {/* Header */}
@@ -73,75 +67,68 @@ export function WalletHome({ address }: { address: string }) {
                 variants={container}
                 initial="hidden"
                 animate="show"
-                className="px-6 space-y-6 pt-4"
+                className="px-6 space-y-8 pt-4"
             >
                 {activeTab === 'home' && (
-                    <motion.div variants={item} className="grid grid-cols-2 gap-4">
-                        {[
-                            { label: 'Send', icon: Send, action: () => setIsSendOpen(true), color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-                            { label: 'Receive', icon: Download, action: () => setIsReceiveOpen(true), color: 'bg-green-500/10 text-green-600 dark:text-green-400' },
-                            { label: 'Swap', icon: ArrowUpDown, action: () => setIsSwapOpen(true), color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
-                            { label: 'Rewards', icon: Gift, action: () => setIsRewardsOpen(true), color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-                        ].map((action) => (
-                            <button 
-                                key={action.label}
-                                onClick={action.action}
-                                className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-all active:scale-95"
-                            >
-                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", action.color)}>
-                                    <action.icon className="w-6 h-6" />
-                                </div>
-                                <span className="font-semibold text-lg">{action.label}</span>
-                            </button>
-                        ))}
-                    </motion.div>
-                )}
-
-                {activeTab === 'balance' && (
-                    <motion.div variants={item} className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold">Your Assets</h2>
-                            <button 
-                                onClick={handleRefresh}
-                                className={cn(
-                                    "p-2 rounded-full hover:bg-secondary transition-colors",
-                                    isRefreshing && "animate-spin text-primary"
-                                )}
-                            >
-                                <RefreshCw className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="p-4 rounded-3xl bg-card border border-border flex items-center justify-between shadow-sm">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
-                                        P
+                    <motion.div variants={item} className="space-y-8">
+                        {/* Essentials Section */}
+                        <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Transfers</h3>
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={() => setIsSendOpen(true)}
+                                    className="flex-1 flex flex-col items-center gap-2 p-4 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-all active:scale-95"
+                                >
+                                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                                        <Send className="w-6 h-6" />
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold">PathUSD</h3>
-                                        <p className="text-muted-foreground text-sm">Stablecoin</p>
+                                    <span className="font-semibold text-sm">Send</span>
+                                </button>
+                                <button 
+                                    onClick={() => setIsReceiveOpen(true)}
+                                    className="flex-1 flex flex-col items-center gap-2 p-4 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-all active:scale-95"
+                                >
+                                    <div className="w-12 h-12 rounded-2xl bg-green-500/10 text-green-600 flex items-center justify-center">
+                                        <Download className="w-6 h-6" />
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <span className="block font-bold text-lg">${balances?.pathUSD || '0.00'}</span>
-                                </div>
+                                    <span className="font-semibold text-sm">Receive</span>
+                                </button>
                             </div>
+                        </section>
 
-                            <div className="p-4 rounded-3xl bg-card border border-border flex items-center justify-between shadow-sm">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
-                                        α
+                        {/* DeFi & Earn Section */}
+                        <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wider">DeFi & Earn</h3>
+                            <div className="grid grid-cols-3 gap-3">
+                                <button 
+                                    onClick={() => setIsSwapOpen(true)}
+                                    className="flex flex-col items-center gap-2 p-4 rounded-3xl bg-card border border-border hover:bg-secondary/50 transition-all active:scale-95"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center">
+                                        <ArrowUpDown className="w-5 h-5" />
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold">AlphaUSD</h3>
-                                        <p className="text-muted-foreground text-sm">Stablecoin</p>
+                                    <span className="font-semibold text-sm">Swap</span>
+                                </button>
+                                <button 
+                                    onClick={() => setIsLiquidityOpen(true)}
+                                    className="flex flex-col items-center gap-2 p-4 rounded-3xl bg-card border border-border hover:bg-secondary/50 transition-all active:scale-95"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
+                                        <Droplets className="w-5 h-5" />
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <span className="block font-bold text-lg">${balances?.alphaUSD || '0.00'}</span>
-                                </div>
+                                    <span className="font-semibold text-sm">Liquidity</span>
+                                </button>
+                                <button 
+                                    onClick={() => setIsRewardsOpen(true)}
+                                    className="flex flex-col items-center gap-2 p-4 rounded-3xl bg-card border border-border hover:bg-secondary/50 transition-all active:scale-95"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-orange-500/10 text-orange-600 flex items-center justify-center">
+                                        <Gift className="w-5 h-5" />
+                                    </div>
+                                    <span className="font-semibold text-sm">Rewards</span>
+                                </button>
                             </div>
-                        </div>
+                        </section>
                     </motion.div>
                 )}
 
