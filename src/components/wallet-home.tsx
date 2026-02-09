@@ -2,26 +2,31 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Download, ArrowUpDown, Gift, History } from 'lucide-react';
+import { Send, Download, ArrowUpDown, Gift, History, RefreshCw } from 'lucide-react';
 import { SendDialog } from './send-dialog';
 import { ReceiveDialog } from './receive-dialog';
 import { SwapDialog } from './swap-dialog';
 import { RewardsDialog } from './rewards-dialog';
 import { SettingsDialog } from './settings-dialog';
 import { useWallet } from '@/hooks/use-wallet';
-import { ThemeToggle } from './theme-toggle';
 import { cn } from '@/lib/utils';
 import { BottomNav } from './bottom-nav';
-import { formatUnits } from 'viem';
 
 export function WalletHome({ address }: { address: string }) {
-  const { balances, history, preferredToken, refresh } = useWallet();
+  const { balances, refresh } = useWallet();
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [isSwapOpen, setIsSwapOpen] = useState(false);
   const [isRewardsOpen, setIsRewardsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'balance' | 'history'>('home');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+      setIsRefreshing(true);
+      await refresh();
+      setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const container = {
     hidden: { opacity: 0 },
@@ -61,9 +66,6 @@ export function WalletHome({ address }: { address: string }) {
                         <h1 className="font-bold text-lg leading-tight">User</h1>
                     </div>
                 </button>
-                <div className="flex gap-2">
-                    <ThemeToggle />
-                </div>
             </header>
 
             <motion.div 
@@ -97,7 +99,18 @@ export function WalletHome({ address }: { address: string }) {
 
                 {activeTab === 'balance' && (
                     <motion.div variants={item} className="space-y-4">
-                        <h2 className="text-2xl font-bold">Your Assets</h2>
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold">Your Assets</h2>
+                            <button 
+                                onClick={handleRefresh}
+                                className={cn(
+                                    "p-2 rounded-full hover:bg-secondary transition-colors",
+                                    isRefreshing && "animate-spin text-primary"
+                                )}
+                            >
+                                <RefreshCw className="w-5 h-5" />
+                            </button>
+                        </div>
                         <div className="space-y-3">
                             <div className="p-4 rounded-3xl bg-card border border-border flex items-center justify-between shadow-sm">
                                 <div className="flex items-center gap-4">

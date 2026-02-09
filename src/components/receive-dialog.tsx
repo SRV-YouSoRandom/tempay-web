@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Check, Share2, Info } from 'lucide-react';
 import QRCode from 'react-qr-code';
-import { TOKENS } from '@/lib/dex-abi';
-import { useWallet } from '@/hooks/use-wallet';
 
 interface ReceiveDialogProps {
   isOpen: boolean;
@@ -15,11 +13,9 @@ interface ReceiveDialogProps {
 
 export function ReceiveDialog({ isOpen, onClose, address }: ReceiveDialogProps) {
   const [copied, setCopied] = useState(false);
-  const { preferredToken, setPreferredToken } = useWallet();
 
-  // Encode preference in QR: tempo:<address>?token=<token_address>
-  const targetTokenAddress = TOKENS[preferredToken].address;
-  const qrValue = `tempo:${address}?token=${targetTokenAddress}`;
+  // Simple QR with just address for now
+  const qrValue = `tempo:${address}`;
 
   const copyAddress = () => {
     navigator.clipboard.writeText(address);
@@ -66,29 +62,6 @@ export function ReceiveDialog({ isOpen, onClose, address }: ReceiveDialogProps) 
                  />
               </div>
 
-              <div className="w-full space-y-2">
-                  <div className="flex justify-center mb-2">
-                      <div className="flex bg-secondary p-1 rounded-lg">
-                          {(['pathUSD', 'alphaUSD'] as const).map((asset) => (
-                              <button
-                                  key={asset}
-                                  onClick={() => setPreferredToken(asset)}
-                                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                                      preferredToken === asset
-                                      ? 'bg-background shadow-sm text-foreground'
-                                      : 'text-muted-foreground hover:text-foreground/80'
-                                  }`}
-                              >
-                                  Get {asset}
-                              </button>
-                          ))}
-                      </div>
-                  </div>
-                  <p className="text-xs text-center text-muted-foreground">
-                      Requesting <b>{preferredToken}</b>
-                  </p>
-              </div>
-
               <div className="w-full p-4 bg-secondary/50 rounded-xl space-y-2">
                 <p className="text-xs text-muted-foreground text-center font-mono break-all">
                   {address}
@@ -110,7 +83,7 @@ export function ReceiveDialog({ isOpen, onClose, address }: ReceiveDialogProps) 
               <div className="flex gap-2 items-start bg-blue-500/10 p-3 rounded-xl">
                   <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
                   <p className="text-xs text-blue-600 dark:text-blue-400">
-                      If sender uses TemPay, it will suggest auto-swapping to {preferredToken}.
+                      Senders can scan this to pay you instantly.
                   </p>
               </div>
             </div>

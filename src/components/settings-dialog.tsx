@@ -1,8 +1,9 @@
 "use client"
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Shield, CreditCard, ChevronRight, LogOut } from 'lucide-react';
+import { X, User, Shield, ChevronRight, LogOut } from 'lucide-react';
 import { useWallet } from '@/hooks/use-wallet';
+import { ThemeToggle } from './theme-toggle';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
-  const { address, preferredToken, setPreferredToken } = useWallet();
+  const { address } = useWallet();
 
   return (
     <AnimatePresence>
@@ -56,32 +57,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 {/* Preferences */}
                 <div className="space-y-4">
                     <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Preferences</h3>
-                    
-                    {/* Preferred Token */}
-                    <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-                        <div className="flex items-center gap-3">
-                            <CreditCard className="w-5 h-5 text-primary" />
-                            <div>
-                                <h4 className="font-bold">Preferred Token</h4>
-                                <p className="text-xs text-muted-foreground">Default asset for receiving payments</p>
-                            </div>
-                        </div>
-                        
-                        <div className="bg-secondary p-1 rounded-xl flex">
-                             {(['pathUSD', 'alphaUSD'] as const).map((token) => (
-                                 <button
-                                    key={token}
-                                    onClick={() => setPreferredToken(token)}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                                        preferredToken === token 
-                                            ? 'bg-background shadow-sm text-foreground' 
-                                            : 'text-muted-foreground hover:text-foreground'
-                                    }`}
-                                 >
-                                    {token}
-                                 </button>
-                             ))}
-                        </div>
+                    <div className="flex items-center justify-between bg-card border border-border p-4 rounded-2xl">
+                        <span className="font-medium">App Theme</span>
+                        <ThemeToggle />
                     </div>
                 </div>
 

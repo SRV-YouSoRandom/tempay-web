@@ -22,8 +22,6 @@ export type WalletState = {
   swap: (tokenIn: 'pathUSD' | 'alphaUSD', amount: string, to?: string) => Promise<`0x${string}` | null>;
   rewards: Record<string, string>;
   claimRewards: (tokenSymbol: 'pathUSD' | 'alphaUSD') => Promise<`0x${string}` | null>;
-  preferredToken: 'pathUSD' | 'alphaUSD';
-  setPreferredToken: (token: 'pathUSD' | 'alphaUSD') => void;
   refresh: () => Promise<void>;
   refreshRewards: () => Promise<void>;
 };
@@ -74,20 +72,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       pathUSD: '0.00',
       alphaUSD: '0.00'
   });
-  const [preferredToken, setPreferredToken] = useState<'pathUSD' | 'alphaUSD'>('pathUSD');
-
-  // Load preferred token
-  useEffect(() => {
-    const saved = localStorage.getItem('tempay_preferred_token');
-    if (saved === 'pathUSD' || saved === 'alphaUSD') {
-        setPreferredToken(saved);
-    }
-  }, []);
-
-  const savePreferredToken = (token: 'pathUSD' | 'alphaUSD') => {
-      setPreferredToken(token);
-      localStorage.setItem('tempay_preferred_token', token);
-  };
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [history] = useState<any[]>([]);
@@ -335,8 +319,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     swap,
     rewards,
     claimRewards,
-    preferredToken,
-    setPreferredToken: savePreferredToken,
     refresh,
     refreshRewards
   };

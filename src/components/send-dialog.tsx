@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 import { useWallet } from '@/hooks/use-wallet';
-import { X, CheckCircle, ArrowRight, DollarSign, Loader2, ArrowLeftRight, Info } from 'lucide-react';
+import { X, CheckCircle, ArrowRight, DollarSign, Loader2, ArrowLeftRight, Info, ChevronRight } from 'lucide-react';
 import { TOKENS } from '@/lib/dex-abi';
 
 interface SendDialogProps {
@@ -14,6 +14,7 @@ interface SendDialogProps {
 export function SendDialog({ isOpen, onClose }: SendDialogProps) {
   const { sendPayment, swap, balances } = useWallet();
   const [step, setStep] = useState<'input' | 'confirm' | 'success'>('input');
+  // ... existing state ...
   const [to, setTo] = useState('');
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
@@ -23,6 +24,13 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
   // Advanced Payment Logic
   const [spendingToken, setSpendingToken] = useState<'pathUSD' | 'alphaUSD'>('pathUSD');
   const [recipientToken, setRecipientToken] = useState<'pathUSD' | 'alphaUSD' | null>(null);
+
+  // Swipe State
+  const constraintsRef = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const controls = useAnimation();
+  const backgroundOpacity = useTransform(x, [0, 200], [0, 1]);
+  const [swipeConfirmed, setSwipeConfirmed] = useState(false);
 
   // Reset state when opening
   useEffect(() => {
@@ -34,11 +42,14 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
         setIsSending(false);
         setTxHash('');
         setRecipientToken(null);
+        setSwipeConfirmed(false);
+        x.set(0);
     }
-  }, [isOpen]);
+  }, [isOpen, x]);
 
   const [swapPrompt, setSwapPrompt] = useState<{ from: 'pathUSD' | 'alphaUSD', missing: string } | null>(null);
 
+  // ... handleToChange ...
   const handleToChange = (val: string) => {
       // Check for URI: tempo:0x...?token=0x...
       const uriMatch = val.match(/tempo:(0x[a-fA-F0-9]{40})(?:\?.*token=(0x[a-fA-F0-9]{40}))?/i);
@@ -87,6 +98,9 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
       } catch (e) {
           console.error(e);
           alert("Transaction failed! See console.");
+           // Reset swipe if failed
+           setSwipeConfirmed(false);
+           x.set(0);
       } finally {
           setIsSending(false);
       }
@@ -104,9 +118,16 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
         const otherToken = spendingToken === 'pathUSD' ? 'alphaUSD' : 'pathUSD';
         const otherBal = parseFloat(balances[otherToken]);
         
+        // Reset swipe because we are showing a prompt/alert
+        setSwipeConfirmed(false);
+        x.set(0);
+
         if (otherBal >= reqAmount) {
             // Smart Swap Prompt
-            setSwapPrompt({ from: otherToken, missing: (reqAmount - currentBal).toFixed(2) });
+            // We need to delay this slightly so the swipe animation doesn't look janky while resetting
+            setTimeout(() => {
+                setSwapPrompt({ from: otherToken, missing: (reqAmount - currentBal).toFixed(2) });
+            }, 200);
             return;
         } else {
             alert("Insufficient funds in both wallets.");
@@ -117,7 +138,21 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
     await executeTransaction();
   };
 
+  const handleDragEnd = async () => {
+      if (swipeConfirmed || isSending) return;
+      
+      const currentX = x.get();
+      // Threshold to trigger send (approx 70% of typical width)
+      if (currentX > 200) {
+          setSwipeConfirmed(true);
+          await handleSend();
+      } else {
+          controls.start({ x: 0 });
+      }
+  };
+
   const isAutoSwap = recipientToken && spendingToken !== recipientToken;
+  const canSend = to && amount && !isSending && Number(amount) > 0;
 
   const reset = () => {
     onClose();
@@ -132,15 +167,16 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
             animate={{ opacity: 0.5 }}
             exit={{ opacity: 0 }}
             onClick={reset}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
           />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-3xl p-6 z-50 max-w-md mx-auto h-[90vh] flex flex-col shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-3xl p-6 z-60 max-w-md mx-auto h-[90vh] flex flex-col shadow-2xl"
           >
+             {/* ... header ... */}
             <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-8" />
             
             <button onClick={reset} className="absolute top-6 right-6 p-2 bg-secondary rounded-full hover:bg-muted transition-colors">
@@ -149,6 +185,7 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
             
             {step === 'input' && !swapPrompt && (
                 <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
+                    {/* ... Inputs ... */}
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight text-foreground">Send Money</h2>
                         <p className="text-muted-foreground">Pay with any asset.</p>
@@ -239,26 +276,51 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
 
                     <div className="flex-1" />
 
-                    <button 
-                        onClick={handleSend}
-                        disabled={!to || !amount || isSending || Number(amount) <= 0}
-                        className="w-full bg-primary py-4 rounded-xl font-bold text-primary-foreground shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2 text-lg mt-6"
-                    >
-                        {isSending ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                {isAutoSwap ? 'Swapping & Sending...' : 'Sending...'}
-                            </>
+                    {/* Swipe to Send */}
+                    <div className="mt-6 relative h-16">
+                        {canSend ? (
+                            <div className="relative h-full w-full bg-secondary rounded-full overflow-hidden border border-border" ref={constraintsRef}>
+                                {/* Background Progress */}
+                                <motion.div 
+                                    className="absolute inset-0 bg-primary/20" 
+                                    style={{ opacity: backgroundOpacity }}
+                                />
+                                
+                                {/* Text Label */}
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    {isSending ? (
+                                        <div className="flex items-center gap-2 text-primary font-bold animate-pulse">
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Processing...
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm tracking-wide uppercase opacity-50">
+                                            {isAutoSwap ? 'Swipe to Swap & Pay' : 'Swipe to Pay'} 
+                                            <ChevronRight className="w-4 h-4 ml-1 animate-pulse" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Slider Handle */}
+                                <motion.div
+                                    className="absolute top-1 left-1 bottom-1 w-14 bg-primary rounded-full shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing z-10"
+                                    drag={!isSending && canSend ? "x" : false}
+                                    dragConstraints={{ left: 0, right: 280 }} // Constrain based on container width approx
+                                    dragElastic={0.1}
+                                    dragMomentum={false}
+                                    onDragEnd={handleDragEnd}
+                                    style={{ x }}
+                                    animate={controls}
+                                >
+                                    <ArrowRight className="w-6 h-6 text-primary-foreground" />
+                                </motion.div>
+                            </div>
                         ) : (
-                            <>
-                                {isAutoSwap ? (
-                                    <>Auto-Swap & Pay <ArrowLeftRight className="w-5 h-5" /></>
-                                ) : (
-                                    <>Swipe to Pay <ArrowRight className="w-5 h-5" /></>
-                                )}
-                            </>
+                             <div className="h-full w-full bg-secondary/50 rounded-full flex items-center justify-center border border-border/50 text-muted-foreground font-bold cursor-not-allowed opacity-70">
+                                 Fill details to send
+                             </div>
                         )}
-                    </button>
+                    </div>
                 </div>
             )}
 

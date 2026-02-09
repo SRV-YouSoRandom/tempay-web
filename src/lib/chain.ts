@@ -15,7 +15,7 @@ export const tempoModerato = defineChain({
     },
   },
   blockExplorers: {
-    default: { name: 'Tempo Explorer', url: 'https://scan.moderato.tempo.xyz' },
+    default: { name: 'Tempo Explorer', url: 'https://explore.tempo.xyz' },
   },
   testnet: true,
 });
