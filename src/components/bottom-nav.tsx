@@ -3,7 +3,7 @@
 import { Home, Wallet, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type Tab = 'home' | 'balance' | 'history';
+export type Tab = 'home' | 'balance' | 'history' | 'liquidity';
 
 interface BottomNavProps {
   activeTab: Tab;

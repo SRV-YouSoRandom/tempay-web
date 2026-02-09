@@ -36,9 +36,11 @@ export function LiquidityDialog({ isOpen, onClose, initialPair = "AlphaUSD / Pat
   
   // Provide State
   const [side, setSide] = useState<'Buy' | 'Sell'>('Buy');
-  // Simplified: Always Alpha/Path pair for MVP
   const pair = initialPair; 
-  const token = 'alphaUSD';
+  // Derive token key from pair (e.g. "AlphaUSD / PathUSD" -> "alphaUSD")
+  // Assumes format "[Symbol] / PathUSD" and keys are camelCase
+  const rawSymbol = pair.split(' / ')[0];
+  const token = rawSymbol.charAt(0).toLowerCase() + rawSymbol.slice(1);
   
   const [amount, setAmount] = useState('');
   const [price, setPrice] = useState('1.00');
@@ -71,7 +73,10 @@ export function LiquidityDialog({ isOpen, onClose, initialPair = "AlphaUSD / Pat
       setIsProcessing(true);
 
       try {
-        const targetToken = TOKENS[token].address;
+
+        const tokenInfo = TOKENS[token as keyof typeof TOKENS];
+        if (!tokenInfo) throw new Error("Invalid Token");
+        const targetToken = tokenInfo.address;
         // Logic: Buying Alpha means paying Path. Selling Alpha means paying Alpha.
         const spendTokenSymbol = side === 'Buy' ? 'pathUSD' : 'alphaUSD'; 
         const spendTokenAddress = TOKENS[spendTokenSymbol].address;

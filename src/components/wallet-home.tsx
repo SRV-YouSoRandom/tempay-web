@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Download, ArrowUpDown, Gift, History, Droplets, RefreshCw } from 'lucide-react';
+import { Send, Download, ArrowUpDown, Gift, History, Droplets, RefreshCw, ChevronRight } from 'lucide-react';
 import { SendDialog } from './send-dialog';
 import { ReceiveDialog } from './receive-dialog';
 import { SwapDialog } from './swap-dialog';
@@ -11,6 +11,7 @@ import { SettingsDialog } from './settings-dialog';
 import { LiquidityDialog } from './liquidity-dialog';
 import { useWallet } from '@/hooks/use-wallet';
 import { BottomNav } from './bottom-nav';
+import { TOKENS } from '@/lib/dex-abi';
 
 export function WalletHome({ address }: { address: string }) {
   const { balances, refresh } = useWallet();
@@ -20,6 +21,7 @@ export function WalletHome({ address }: { address: string }) {
   const [isRewardsOpen, setIsRewardsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLiquidityOpen, setIsLiquidityOpen] = useState(false);
+  const [selectedPair, setSelectedPair] = useState("AlphaUSD / PathUSD");
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   const handleRefresh = async () => {
@@ -28,7 +30,7 @@ export function WalletHome({ address }: { address: string }) {
       setTimeout(() => setIsRefreshing(false), 500);
   };
   
-  const [activeTab, setActiveTab] = useState<'home' | 'balance' | 'history'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'balance' | 'history' | 'liquidity'>('home');
 
   const container = {
     hidden: { opacity: 0 },
@@ -52,7 +54,7 @@ export function WalletHome({ address }: { address: string }) {
        <SwapDialog isOpen={isSwapOpen} onClose={() => setIsSwapOpen(false)} />
        <RewardsDialog isOpen={isRewardsOpen} onClose={() => setIsRewardsOpen(false)} />
        <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-       <LiquidityDialog isOpen={isLiquidityOpen} onClose={() => setIsLiquidityOpen(false)} />
+       <LiquidityDialog isOpen={isLiquidityOpen} onClose={() => setIsLiquidityOpen(false)} initialPair={selectedPair} />
        
        <div className="flex-1 overflow-y-auto pb-24 no-scrollbar">
             {/* Header */}
@@ -119,7 +121,7 @@ export function WalletHome({ address }: { address: string }) {
                                     <span className="font-semibold text-sm">Swap</span>
                                 </button>
                                 <button 
-                                    onClick={() => setIsLiquidityOpen(true)}
+                                    onClick={() => setActiveTab('liquidity')}
                                     className="flex flex-col items-center gap-2 p-4 rounded-3xl bg-card border border-border hover:bg-secondary/50 transition-all active:scale-95"
                                 >
                                     <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
@@ -193,6 +195,65 @@ export function WalletHome({ address }: { address: string }) {
                                 })}
                             </div>
                         </section>
+                    </motion.div>
+                )}
+
+                {activeTab === 'liquidity' && (
+                    <motion.div variants={item} className="space-y-6">
+                        <div className="flex items-center gap-2 mb-6">
+                            <button 
+                                onClick={() => setActiveTab('home')}
+                                className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+                            > 
+                                <ChevronRight className="w-5 h-5 rotate-180" />
+                            </button>
+                            <div>
+                                <h2 className="text-2xl font-bold">Liquidity Pools</h2>
+                                <p className="text-muted-foreground text-sm">Select a pair to manage</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {Object.values(TOKENS).filter(t => t.symbol !== 'pathUSD').map((token) => {
+                                // Construct Pair Name
+                                const pairName = `${token.symbol === 'alphaUSD' ? 'AlphaUSD' : 
+                                                  token.symbol === 'betaUSD' ? 'BetaUSD' : 
+                                                  token.symbol === 'thetaUSD' ? 'ThetaUSD' : token.symbol} / PathUSD`;
+                                
+                                // Colors
+                                const colors: Record<string, string> = {
+                                    alphaUSD: 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600',
+                                    betaUSD: 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600',
+                                    thetaUSD: 'bg-rose-100 dark:bg-rose-900/20 text-rose-600'
+                                };
+                                const colorClass = colors[token.symbol] || 'bg-gray-100 dark:bg-gray-800 text-gray-600';
+
+                                return (
+                                    <button 
+                                        key={token.symbol}
+                                        onClick={() => {
+                                            setSelectedPair(pairName);
+                                            setIsLiquidityOpen(true);
+                                        }}
+                                        className="w-full p-4 rounded-3xl bg-card border border-border flex items-center justify-between shadow-sm hover:shadow-md transition-all active:scale-95 text-left"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${colorClass}`}>
+                                                <Droplets className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-lg">{pairName}</h3>
+                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                    <span className="bg-green-500/10 text-green-600 px-2 py-0.5 rounded text-xs font-bold">0.3% Fee</span>
+                                                    <span>• Stable</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </motion.div>
                 )}
 
