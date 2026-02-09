@@ -21,7 +21,7 @@ export function RewardsDialog({ isOpen, onClose }: RewardsDialogProps) {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleClaim = async (token: 'pathUSD' | 'alphaUSD') => {
+  const handleClaim = async (token: string) => {
     setIsLoading(token);
     try {
         const hash = await claimRewards(token);
@@ -71,15 +71,15 @@ export function RewardsDialog({ isOpen, onClose }: RewardsDialogProps) {
                         </div>
                      )}
 
-                    {(['pathUSD', 'alphaUSD'] as const).map((token) => (
+                    {Object.entries(rewards).map(([token, amount]) => (
                         <div key={token} className="bg-secondary/50 p-4 rounded-2xl flex justify-between items-center border border-border/50">
                             <div>
                                 <span className="text-xs font-bold text-muted-foreground uppercase">{token}</span>
-                                <div className="text-2xl font-bold">{rewards[token]}</div>
+                                <div className="text-2xl font-bold">{amount}</div>
                             </div>
                             <button
                                 onClick={() => handleClaim(token)}
-                                disabled={!!isLoading || Number(rewards[token]) === 0}
+                                disabled={!!isLoading || Number(amount) === 0}
                                 className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 disabled:opacity-50 disabled:shadow-none min-w-[80px] flex justify-center"
                             >
                                 {isLoading === token ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Claim'}

@@ -84,8 +84,9 @@ export function SendDialog({ isOpen, onClose }: SendDialogProps) {
               console.log(`Sending ${currentSpendingToken} to ${to}`);
               hash = await sendPayment(to, amount, memo, currentSpendingToken);
           } else {
-              console.log(`Swapping ${currentSpendingToken} to ${targetToken} for ${to}`);
-              hash = await swap(currentSpendingToken, amount, to);
+              console.log(`Swapping ${currentSpendingToken} to ${targetToken} (to Self)`);
+              // Note: DEX currently only swaps to msg.sender. Auto-send to recipient needs 2 txs or router.
+              hash = await swap(currentSpendingToken, targetToken, amount);
           }
 
           if (hash) {

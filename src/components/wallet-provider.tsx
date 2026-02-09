@@ -18,10 +18,10 @@ export type WalletState = {
   isLoading: boolean;
   createWallet: () => void;
   client: (WalletClient & PublicClient) | null;
-  sendPayment: (to: string, amount: string, memo: string, token?: 'pathUSD' | 'alphaUSD') => Promise<`0x${string}`>;
-  swap: (tokenIn: 'pathUSD' | 'alphaUSD', amount: string, to?: string) => Promise<`0x${string}` | null>;
+  sendPayment: (to: string, amount: string, memo: string, token?: string) => Promise<`0x${string}`>;
+  swap: (tokenIn: string, tokenOut: string, amount: string) => Promise<`0x${string}` | null>;
   rewards: Record<string, string>;
-  claimRewards: (tokenSymbol: 'pathUSD' | 'alphaUSD') => Promise<`0x${string}` | null>;
+  claimRewards: (tokenSymbol: string) => Promise<`0x${string}` | null>;
   refresh: () => Promise<void>;
   refreshRewards: () => Promise<void>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -91,30 +91,29 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const refresh = async () => {
      if (account && client) {
           try {
-              // 1. Fetch Balances
-              const [pathBal, alphaBal] = await Promise.all([
+              // 1. Fetch Balances for all tokens
+              const tokenList = Object.values(TOKENS);
+              const balancePromises = tokenList.map(token => 
                   client.readContract({
-                      address: TOKENS.pathUSD.address as `0x${string}`,
-                      abi: TIP20_ABI,
-                      functionName: 'balanceOf',
-                      args: [account.address]
-                  }),
-                  client.readContract({
-                      address: TOKENS.alphaUSD.address as `0x${string}`,
+                      address: token.address as `0x${string}`,
                       abi: TIP20_ABI,
                       functionName: 'balanceOf',
                       args: [account.address]
                   })
-              ]);
+              );
 
-              const fmtPath = (Number(pathBal) / 1_000_000).toFixed(2);
-              const fmtAlpha = (Number(alphaBal) / 1_000_000).toFixed(2);
-
-              setBalance(fmtPath);
-              setBalances({
-                  pathUSD: fmtPath,
-                  alphaUSD: fmtAlpha
+              const results = await Promise.all(balancePromises);
+              
+              const newBalances: Record<string, string> = {};
+              results.forEach((bal, index) => {
+                  const token = tokenList[index];
+                  // All configured tokens are 6 decimals
+                  newBalances[token.symbol] = (Number(bal) / 1_000_000).toFixed(2);
               });
+
+              // Update main balance (default to pathUSD for backward compatibility/total value display)
+              setBalance(newBalances.pathUSD || '0.00');
+              setBalances(newBalances);
           } catch (e) {
               console.error("Failed to fetch data", e);
           }
@@ -140,18 +139,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                   }
               };
 
-              const [pathRew, alphaRew] = await Promise.all([
-                  fetchReward(TOKENS.pathUSD.address),
-                  fetchReward(TOKENS.alphaUSD.address)
-              ]);
+              const tokenList = Object.values(TOKENS);
+              const rewardPromises = tokenList.map(token => fetchReward(token.address));
+              const results = await Promise.all(rewardPromises);
 
-              const fmtPathRew = (Number(pathRew) / 1_000_000).toFixed(4);
-              const fmtAlphaRew = (Number(alphaRew) / 1_000_000).toFixed(4);
-
-              setRewards({
-                  pathUSD: fmtPathRew,
-                  alphaUSD: fmtAlphaRew
+              const newRewards: Record<string, string> = {};
+              results.forEach((rew, index) => {
+                  const token = tokenList[index];
+                  newRewards[token.symbol] = (Number(rew) / 1_000_000).toFixed(4);
               });
+
+              setRewards(newRewards);
           } catch (e) {
               console.error("Failed to fetch rewards", e);
           }
@@ -172,11 +170,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new Event('storage'));
   };
   
-  const sendPayment = async (to: string, amount: string, memo: string, tokenSymbol: 'pathUSD' | 'alphaUSD' = 'pathUSD') => {
+  const sendPayment = async (to: string, amount: string, memo: string, tokenSymbol: string = 'pathUSD') => {
     if (!client || !account) throw new Error("Wallet not initialized");
     
     try {
-        const token = TOKENS[tokenSymbol];
+        const token = TOKENS[tokenSymbol as keyof typeof TOKENS];
+        if (!token) throw new Error("Invalid token");
+
         // TIP-20 tokens have 6 decimal places as per research
         const amountUnits = BigInt(Math.floor(parseFloat(amount) * 1_000_000));
 
@@ -199,12 +199,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const swap = async (tokenInSymbol: 'pathUSD' | 'alphaUSD', amount: string) => {
+  const swap = async (tokenInSymbol: string, tokenOutSymbol: string, amount: string) => {
       if (!client || !account) return null;
       // Derived symbols
-      const tokenIn = TOKENS[tokenInSymbol];
-      const tokenOut = tokenInSymbol === 'pathUSD' ? TOKENS.alphaUSD : TOKENS.pathUSD;
+      const tokenIn = TOKENS[tokenInSymbol as keyof typeof TOKENS];
+      const tokenOut = TOKENS[tokenOutSymbol as keyof typeof TOKENS];
       
+      if (!tokenIn || !tokenOut) {
+          console.error("Invalid tokens for swap");
+          return null;
+      }
+
       try {
           // TIP-20 tokens have 6 decimal places according to research
           const amountUnits = parseUnits(amount, 6);
@@ -289,11 +294,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
   };
 
-  const claimRewards = async (tokenSymbol: 'pathUSD' | 'alphaUSD') => {
+  const claimRewards = async (tokenSymbol: string) => {
       if (!client || !account) return null;
       try {
+          const token = TOKENS[tokenSymbol as keyof typeof TOKENS];
+          if (!token) return null;
+
           const hash = await client.writeContract({
-              address: TOKENS[tokenSymbol].address as `0x${string}`,
+              address: token.address as `0x${string}`,
               abi: TIP20_ABI,
               functionName: 'claim',
               account: account,

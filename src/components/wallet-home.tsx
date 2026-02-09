@@ -2,22 +2,31 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Download, ArrowUpDown, Gift, History, Droplets } from 'lucide-react';
+import { Send, Download, ArrowUpDown, Gift, History, Droplets, RefreshCw } from 'lucide-react';
 import { SendDialog } from './send-dialog';
 import { ReceiveDialog } from './receive-dialog';
 import { SwapDialog } from './swap-dialog';
 import { RewardsDialog } from './rewards-dialog';
 import { SettingsDialog } from './settings-dialog';
 import { LiquidityDialog } from './liquidity-dialog';
+import { useWallet } from '@/hooks/use-wallet';
 import { BottomNav } from './bottom-nav';
 
 export function WalletHome({ address }: { address: string }) {
+  const { balances, refresh } = useWallet();
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
   const [isSwapOpen, setIsSwapOpen] = useState(false);
   const [isRewardsOpen, setIsRewardsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLiquidityOpen, setIsLiquidityOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const handleRefresh = async () => {
+      setIsRefreshing(true);
+      await refresh();
+      setTimeout(() => setIsRefreshing(false), 500);
+  };
   
   const [activeTab, setActiveTab] = useState<'home' | 'balance' | 'history'>('home');
 
@@ -131,6 +140,62 @@ export function WalletHome({ address }: { address: string }) {
                         </section>
                     </motion.div>
                 )}
+
+                {activeTab === 'balance' && (
+                    <motion.div variants={item} className="space-y-6">
+                        <div className="text-center py-6 relative">
+                             <button 
+                                onClick={handleRefresh}
+                                className="absolute right-0 top-6 p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-all active:scale-95"
+                                title="Refresh Balances"
+                             >
+                                <RefreshCw className={`w-4 h-4 text-muted-foreground ${isRefreshing ? 'animate-spin' : ''}`} />
+                             </button>
+                             <h2 className="text-3xl font-bold">${Object.values(balances).reduce((a, b) => a + Number(b), 0).toFixed(2)}</h2>
+                             <p className="text-muted-foreground">Total Value</p>
+                        </div>
+
+                        <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Your Assets</h3>
+                            <div className="space-y-3">
+                                {Object.entries(balances).map(([symbol, balance]) => {
+                                    // Default colors if not mapped
+                                    const colors: Record<string, string> = {
+                                        pathUSD: 'bg-blue-100 dark:bg-blue-900/20 text-blue-600',
+                                        alphaUSD: 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600',
+                                        betaUSD: 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600',
+                                        thetaUSD: 'bg-rose-100 dark:bg-rose-900/20 text-rose-600'
+                                    };
+                                    const colorClass = colors[symbol] || 'bg-gray-100 dark:bg-gray-800 text-gray-600';
+                                    
+                                    // Get first char of symbol as icon text (ignoring case)
+                                    const iconChar = symbol.charAt(0).toUpperCase();
+
+                                    return (
+                                        <div key={symbol} className="p-4 rounded-3xl bg-card border border-border flex items-center justify-between shadow-sm">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${colorClass}`}>
+                                                    {symbol === 'alphaUSD' ? 'α' : 
+                                                     symbol === 'betaUSD' ? 'β' : 
+                                                     symbol === 'thetaUSD' ? 'θ' : 
+                                                     iconChar}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold">{symbol}</h3>
+                                                    <p className="text-muted-foreground text-sm">Stablecoin</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block font-bold text-lg">${balance}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    </motion.div>
+                )}
+
 
                 {activeTab === 'history' && (
                     <motion.div variants={item} className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">

@@ -14,10 +14,9 @@ export function SwapDialog({ isOpen, onClose }: SwapDialogProps) {
   const { swap, balances } = useWallet();
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [tokenIn, setTokenIn] = useState<'pathUSD' | 'alphaUSD'>('pathUSD');
+  const [tokenIn, setTokenIn] = useState<string>('pathUSD');
+  const [tokenOut, setTokenOut] = useState<string>('alphaUSD');
   const [status, setStatus] = useState<'idle' | 'approving' | 'swapping' | 'success' | 'error'>('idle');
-
-  const tokenOut = tokenIn === 'pathUSD' ? 'alphaUSD' : 'pathUSD';
 
   const handleSwap = async () => {
     if (!amount || isNaN(Number(amount))) return;
@@ -25,7 +24,7 @@ export function SwapDialog({ isOpen, onClose }: SwapDialogProps) {
     setStatus('approving');
     
     try {
-      const hash = await swap(tokenIn, amount);
+      const hash = await swap(tokenIn, tokenOut, amount);
       if (hash) {
         setStatus('success');
         setTimeout(() => {
@@ -79,17 +78,23 @@ export function SwapDialog({ isOpen, onClose }: SwapDialogProps) {
             </div>
 
             <div className="space-y-4">
-                {/* From Token */}
+                {/* From Token Selector */}
                 <div className="bg-secondary/50 p-4 rounded-2xl border border-border/50">
                     <div className="flex justify-between text-sm text-muted-foreground mb-2">
                         <span>From</span>
-                        <span>Balance: {balances?.[tokenIn]}</span>
+                        <span>Balance: {balances?.[tokenIn] || '0.00'}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex shrink-0 items-center gap-2 bg-background px-3 py-1.5 rounded-full border border-border shadow-sm">
-                            <div className={`w-5 h-5 rounded-full ${tokenIn === 'pathUSD' ? 'bg-primary' : 'bg-blue-500'}`} />
-                            <span className="font-bold">{tokenIn}</span>
-                        </div>
+                        <select
+                            value={tokenIn}
+                            onChange={(e) => setTokenIn(e.target.value)}
+                            className="bg-background px-3 py-1.5 rounded-full border border-border shadow-sm font-bold outline-none"
+                            disabled={isLoading}
+                        >
+                            {Object.keys(balances || {}).map(symbol => (
+                                <option key={symbol} value={symbol}>{symbol}</option>
+                            ))}
+                        </select>
                         <input
                             type="number"
                             value={amount}
@@ -112,17 +117,23 @@ export function SwapDialog({ isOpen, onClose }: SwapDialogProps) {
                     </button>
                 </div>
 
-                {/* To Token */}
+                {/* To Token Selector */}
                 <div className="bg-secondary/50 p-4 rounded-2xl border border-border/50">
                     <div className="flex justify-between text-sm text-muted-foreground mb-2">
                         <span>To (Estimated)</span>
-                        <span>Balance: {balances?.[tokenOut]}</span>
+                        <span>Balance: {balances?.[tokenOut] || '0.00'}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                         <div className="flex shrink-0 items-center gap-2 bg-background px-3 py-1.5 rounded-full border border-border shadow-sm">
-                            <div className={`w-5 h-5 rounded-full ${tokenOut === 'pathUSD' ? 'bg-primary' : 'bg-blue-500'}`} />
-                            <span className="font-bold">{tokenOut}</span>
-                        </div>
+                         <select
+                            value={tokenOut}
+                            onChange={(e) => setTokenOut(e.target.value)}
+                            className="bg-background px-3 py-1.5 rounded-full border border-border shadow-sm font-bold outline-none"
+                            disabled={isLoading}
+                        >
+                            {Object.keys(balances || {}).map(symbol => (
+                                <option key={symbol} value={symbol} disabled={symbol === tokenIn}>{symbol}</option>
+                            ))}
+                        </select>
                         <div className="flex-1 text-right text-2xl font-bold opacity-60">
                             {amount || '0.00'}
                         </div>

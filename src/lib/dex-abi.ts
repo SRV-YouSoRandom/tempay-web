@@ -157,6 +157,18 @@ export const TOKENS = {
         symbol: 'alphaUSD',
         name: 'Alpha USD',
         decimals: 6
+    },
+    betaUSD: {
+        address: '0x20c0000000000000000000000000000000000002',
+        symbol: 'betaUSD',
+        name: 'Beta USD',
+        decimals: 6
+    },
+    thetaUSD: {
+        address: '0x20c0000000000000000000000000000000000003',
+        symbol: 'thetaUSD',
+        name: 'Theta USD',
+        decimals: 6
     }
 };
 
